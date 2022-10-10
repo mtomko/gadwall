@@ -18,10 +18,13 @@ async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, Box<d
     Ok(conditions)
 }
 
-#[tokio::main]
-async fn main() {
+async fn run() {
     if let Err(err) = load_conditions("conditions.csv").await {
         eprint!("Error loading conditions: {}", err);
         process::exit(1)
     }
+}
+
+fn main() {
+    tokio::runtime::Runtime::new().unwrap().block_on(run());
 }
