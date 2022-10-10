@@ -1,8 +1,23 @@
+use clap::Parser;
 use std::collections::HashMap;
 use std::error::Error;
 use std::process;
 use tokio::fs::File;
 use tokio_stream::StreamExt;
+
+#[derive(Parser, Debug)]
+#[command(author = "Mark Tomko <me@marktomko.org>")]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short = 'c', long, value_name = "CSV")]
+    conditions: String,
+    #[arg(short = '1', long, value_name = "FASTQ")]
+    dmux: String,
+    #[arg(short = '2', long, value_name = "FASTQ")]
+    data: String,
+    #[arg(short, long, value_name = "DIR")]
+    output_dir: String,
+}
 
 async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, Box<dyn Error>> {
     let mut conditions = HashMap::new();
@@ -18,13 +33,14 @@ async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, Box<d
     Ok(conditions)
 }
 
-async fn run() {
-    if let Err(err) = load_conditions("conditions.csv").await {
+async fn run(args: Args) {
+    if let Err(err) = load_conditions(&args.conditions).await {
         eprint!("Error loading conditions: {}", err);
         process::exit(1)
     }
 }
 
 fn main() {
-    tokio::runtime::Runtime::new().unwrap().block_on(run());
+    let args = Args::parse();
+    tokio::runtime::Runtime::new().unwrap().block_on(run(args));
 }
