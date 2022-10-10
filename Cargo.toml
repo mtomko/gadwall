@@ -1,0 +1,14 @@
+[package]
+name = "gadwall"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-std = "1.12.0"
+csv-async = { version = "1.2.4", features = ["tokio", "with_serde"] }
+futures = "0.3.24"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
