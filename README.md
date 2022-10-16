@@ -5,7 +5,7 @@ Native FASTQ demultiplexer
 - [x] Set up project 
 - [x] Conditions file reader
 - [x] CLI
-- [ ] Aggregate errors when reading conditions
+- [x] Check errors when reading conditions
 - [ ] FASTQ parser
 - [ ] GZIP file input support
 - [ ] Logging
