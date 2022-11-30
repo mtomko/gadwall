@@ -1,10 +1,14 @@
-use clap::Parser;
-use std::collections::HashMap;
-use std::process;
-use tokio::fs::File;
-use tokio_stream::StreamExt;
 mod dna;
+use clap::Parser;
 use core::fmt;
+use fastq::{parse_path, Record};
+use itermap::IterMap;
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::Path;
+use std::process;
+use std::str;
+use tokio_stream::StreamExt;
 
 #[derive(Parser, Debug)]
 #[command(author = "Mark Tomko <me@marktomko.org>")]
@@ -35,7 +39,7 @@ async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, CsvEr
     //let mut conditions = HashMap::new();
     let mut rdr = csv_async::AsyncReaderBuilder::new()
         .has_headers(false)
-        .create_reader(File::open(file_in).await.map_err(|_| CsvError {
+        .create_reader(tokio::fs::File::open(file_in).await.map_err(|_| CsvError {
             message: "Unable to create reader".to_string(),
         })?);
     let rs: Result<Vec<(String, String)>, CsvError> = rdr
@@ -52,11 +56,11 @@ async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, CsvEr
                     }
                 }
                 _ => Err(CsvError {
-                    message: "doh".to_string(),
+                    message: "invalid conditions file".to_string(),
                 }),
             },
             Err(_) => Err(CsvError {
-                message: "bad csv".to_string(),
+                message: "invalid csv".to_string(),
             }),
         })
         .collect()
@@ -65,11 +69,52 @@ async fn load_conditions(file_in: &str) -> Result<HashMap<String, String>, CsvEr
     rs.map(|mappings| mappings.into_iter().collect())
 }
 
+fn read_fastqs(file_in1: &str, file_in2: &str, mut conditions: HashMap<String, File>) {
+    parse_path(Some(file_in1), |dmux| {
+        parse_path(Some(file_in2), |data| {
+            let mut dmux_iter = dmux.ref_iter();
+            let mut data_iter = data.ref_iter();
+            while let (Some(dmux_rec), Some(data_rec)) = (dmux_iter.get(), data_iter.get()) {
+                let bc_bytes = &dmux_rec.seq().to_ascii_uppercase();
+                let barcode = str::from_utf8(bc_bytes).expect("ASCII");
+                let writer = conditions.get_mut(barcode);
+                writer.map(|w| data_rec.write(w));
+                dmux_iter.advance().expect("empty dmux");
+                data_iter.advance().expect("empty data");
+            }
+        })
+        .expect("bad data")
+    })
+    .expect("bad dmux");
+}
+
+fn condition_writers(
+    output_dir: &str,
+    conditions: HashMap<String, String>,
+) -> HashMap<String, File> {
+    let p = Path::new(output_dir);
+    conditions
+        .into_iter()
+        .map_values(|v| {
+            //let mut w =
+            std::fs::File::create(p.join(v)).expect("Should have been able to create file")
+            //&mut w
+        })
+        .collect()
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    if let Err(err) = load_conditions(&args.conditions).await {
-        eprint!("Error loading conditions: {}", err);
-        process::exit(1)
+    match load_conditions(&args.conditions).await {
+        Ok(conditions) => read_fastqs(
+            &args.dmux,
+            &args.data,
+            condition_writers(&args.output_dir, conditions),
+        ),
+        Err(err) => {
+            eprint!("Error loading conditions: {}", err);
+            process::exit(1)
+        }
     }
 }
