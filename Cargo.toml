@@ -8,8 +8,10 @@ edition = "2021"
 [dependencies]
 async-std = "1.12.0"
 clap = { version = "4.0.12", features = ["derive"] }
-csv-async = { version = "1.2.4", features = ["tokio", "with_serde"] }
+csv-async = { version = "1.2.4", features = ["tokio"] }
+fastq = "0.6.0"
 futures = "0.3.24"
-serde = { version = "1", features = ["derive"] }
+itermap = "0.2.2"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
+urlencoding = "2.1.2"
